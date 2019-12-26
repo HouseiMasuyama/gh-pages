@@ -234,7 +234,7 @@ var WebCodeCamJS = function(element) {
                         if (options.codeRepetition || lastCode != e.data.result[0].Value) {
                             beep();
                             lastCode = e.data.result[0].Value;
-                            if (!checkDigit(lastCode, e.data.result[0].Format)) return;
+                            // if (!checkDigit(lastCode, e.data.result[0].Format)) return;
                             options.resultFunction({
                                 format: e.data.result[0].Format,
                                 code: e.data.result[0].Value,
