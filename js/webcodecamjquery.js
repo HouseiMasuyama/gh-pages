@@ -40,8 +40,8 @@
             codeRepetition: true,
             tryVertical: true,
             frameRate: 15,
-            width: 320,
-            height: 240,
+            width: 640,
+            height: 480,
             constraints: {
                 video: {
                     mandatory: {
@@ -154,9 +154,9 @@
                 if (Self.options.decodeBarCodeRate) {
                     tryParseBarCode();
                 }
-                if (Self.options.decodeQRCodeRate) {
-                    tryParseQRCode();
-                }
+                // if (Self.options.decodeQRCodeRate) {
+                //     tryParseQRCode();
+                // }
             }, Self.options.successTimeout);
         }
     }
@@ -489,42 +489,6 @@
         return constraints;
     }
 
-    function decodeLocalImage(url) {
-        stop();
-        localImage = true;
-        sucessLocalDecode = false;
-        var img = new Image();
-        img.onload = function() {
-            con.fillStyle = '#fff';
-            con.fillRect(0, 0, w, h);
-            con.drawImage(this, 5, 5, w - 10, h - 10);
-            tryParseQRCode();
-            tryParseBarCode();
-        };
-        if (url) {
-            download("temp", url);
-            decodeLocalImage();
-        } else {
-            if (FileReaderHelper) {
-                new FileReaderHelper().Init('jpg|png|jpeg|gif', 'dataURL', function(e) {
-                    img.src = e.data;
-                }, true);
-            } else {
-                alert("fileReader class not found!");
-            }
-        }
-    }
-
-    function download(filename, url) {
-        var a = $('<a>');
-        a.attr('href', url);
-        a.attr('download', filename);
-        a.css('display', 'none');
-        a.appendTo('body');
-        a.click();
-        a.remove();
-    }
-
     function NotSupportError(message) {
         this.name = 'NotSupportError';
         this.message = (message || '');
@@ -577,9 +541,6 @@
         },
         getLastImageSrc: function() {
             return display.toDataURL();
-        },
-        decodeLocalImage: function(url) {
-            decodeLocalImage(url);
         },
         isInitialized: function() {
             return initialized;
