@@ -56,8 +56,8 @@ var WebCodeCamJS = function(element) {
             constraints: {
                 video: {
                     mandatory: {
-                        maxWidth: 640,
-                        maxHeight: 360
+                        maxWidth: 1280,
+                        maxHeight: 720
                     },
                     optional: [{
                         sourceId: true
