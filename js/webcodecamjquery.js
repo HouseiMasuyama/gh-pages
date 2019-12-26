@@ -223,6 +223,7 @@
 
     function setCallBack() {
         DecodeWorker.onmessage = function(e) {
+            Self.options.step();
             if (localImage || (!delayBool && !video.paused)) {
                 if (e.data.success === true && e.data.success != 'localization') {
                     sucessLocalDecode = true;

@@ -15,6 +15,9 @@
         <script type="text/javascript" src="js/webcodecamjquery.js"></script>
         <script type="text/javascript">
             var arg = {
+                step: function () {
+                    $('body').append($('<li>step</li>'));
+                },
                 resultFunction: function(result) {
                     $('body').append($('<li>' + result.format + ': ' + result.code + '</li>'));
                 },
