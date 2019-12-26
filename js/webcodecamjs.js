@@ -1,13 +1,17 @@
 /*!
- * WebCodeCamJQuery 2.7.0 jQuery plugin Bar code and QR code decoder
+ * WebCodeCamJS 2.7.0 javascript Bar code and QR code decoder 
  * Author: Tóth András
  * Web: http://atandrastoth.co.uk
  * email: atandrastoth@gmail.com
  * Licensed under the MIT license
  */
-(function($, window, document, undefined) {
+var WebCodeCamJS = function(element) {
     'use strict';
-    var pluginName = 'WebCodeCamJQuery';
+    this.Version = {
+        name: 'WebCodeCamJS',
+        version: '2.7.0',
+        author: 'Tóth András',
+    };
     var mediaDevices = window.navigator.mediaDevices;
     mediaDevices.getUserMedia = function(c) {
         return new Promise(function(y, n) {
@@ -23,9 +27,10 @@
             this.removeAttribute('src');
         }
     };
-    var Self, display, videoSelect, lastImageSrc, con, beepSound, w, h, lastCode,
+    var videoSelect, lastImageSrc, con, beepSound, w, h, lastCode;
+    var display = Q(element),
         DecodeWorker = null,
-        video = $('<video muted autoplay playsinline></video>')[0],
+        video = html('<video muted autoplay playsinline></video>'),
         sucessLocalDecode = false,
         localImage = false,
         flipMode = [1, 3, 6, 8],
@@ -33,15 +38,15 @@
         delayBool = false,
         initialized = false,
         localStream = null,
-        defaults = {
+        options = {
             decodeQRCodeRate: 5,
             decodeBarCodeRate: 3,
             successTimeout: 500,
             codeRepetition: true,
             tryVertical: true,
             frameRate: 15,
-            width: 320,
-            height: 240,
+            width: 640,
+            height: 480,
             constraints: {
                 video: {
                     mandatory: {
@@ -52,7 +57,7 @@
                         sourceId: true
                     }]
                 },
-                audio: false
+                audio: false,
             },
             flipVertical: false,
             flipHorizontal: false,
@@ -85,25 +90,15 @@
             }
         };
 
-    function Plugin(element, options) {
-        Self = this;
-        this.element = element;
-        display = element;
-        this.options = $.extend({}, defaults, options);
-        this._defaults = defaults;
-        this._name = pluginName;
-        return this;
-    }
-
     function init() {
         var constraints = changeConstraints();
         try {
             mediaDevices.getUserMedia(constraints).then(cameraSuccess).catch(function(error) {
-                Self.options.cameraError(error);
+                options.cameraError(error);
                 return false;
             });
         } catch (error) {
-            Self.options.getUserMediaError(error);
+            options.getUserMediaError(error);
             return false;
         }
         return true;
@@ -151,18 +146,18 @@
         if (!localImage) {
             setTimeout(function() {
                 delayBool = false;
-                if (Self.options.decodeBarCodeRate) {
+                if (options.decodeBarCodeRate) {
                     tryParseBarCode();
                 }
-                if (Self.options.decodeQRCodeRate) {
+                if (options.decodeQRCodeRate) {
                     tryParseQRCode();
                 }
-            }, Self.options.successTimeout);
+            }, options.successTimeout);
         }
     }
 
     function beep() {
-        if (Self.options.beep) {
+        if (options.beep) {
             beepSound.play();
         }
     }
@@ -170,55 +165,55 @@
     function cameraSuccess(stream) {
         localStream = stream;
         video.streamSrc(stream);
-        Self.options.cameraSuccess(stream);
+        options.cameraSuccess(stream);
     }
 
     function cameraError(error) {
-        Self.options.cameraError(error);
+        options.cameraError(error);
     }
 
     function setEventListeners() {
-        $(video).on('canplay', function(e) {
+        video.addEventListener('canplay', function(e) {
             if (!isStreaming) {
                 if (video.videoWidth > 0) {
                     h = video.videoHeight / (video.videoWidth / w);
                 }
-                $(display).attr('width', w);
-                $(display).attr('height', h);
+                display.setAttribute('width', w);
+                display.setAttribute('height', h);
                 isStreaming = true;
-                if (Self.options.decodeQRCodeRate || Self.options.decodeBarCodeRate) {
+                if (options.decodeQRCodeRate || options.decodeBarCodeRate) {
                     delay();
                 }
             }
-        });
-        $(video).on('play', function() {
+        }, false);
+        video.addEventListener('play', function() {
             setInterval(function() {
                 if (!video.paused && !video.ended) {
-                    var z = Self.options.zoom;
+                    var z = options.zoom;
                     if (z === 0) {
                         z = optimalZoom();
                     }
                     con.drawImage(video, (w * z - w) / -2, (h * z - h) / -2, w * z, h * z);
                     var imageData = con.getImageData(0, 0, w, h);
-                    if (Self.options.grayScale) {
+                    if (options.grayScale) {
                         imageData = grayScale(imageData);
                     }
-                    if (Self.options.brightness !== 0 || Self.options.autoBrightnessValue) {
-                        imageData = brightness(imageData, Self.options.brightness);
+                    if (options.brightness !== 0 || options.autoBrightnessValue) {
+                        imageData = brightness(imageData, options.brightness);
                     }
-                    if (Self.options.contrast !== 0) {
-                        imageData = contrast(imageData, Self.options.contrast);
+                    if (options.contrast !== 0) {
+                        imageData = contrast(imageData, options.contrast);
                     }
-                    if (Self.options.threshold !== 0) {
-                        imageData = threshold(imageData, Self.options.threshold);
+                    if (options.threshold !== 0) {
+                        imageData = threshold(imageData, options.threshold);
                     }
-                    if (Self.options.sharpness.length !== 0) {
-                        imageData = convolute(imageData, Self.options.sharpness);
+                    if (options.sharpness.length !== 0) {
+                        imageData = convolute(imageData, options.sharpness);
                     }
                     con.putImageData(imageData, 0, 0);
                 }
-            }, 1E3 / Self.options.frameRate);
-        });
+            }, 1E3 / options.frameRate);
+        }, false);
     }
 
     function setCallBack() {
@@ -229,10 +224,10 @@
                     delayBool = true;
                     delay();
                     setTimeout(function() {
-                        if (Self.options.codeRepetition || lastCode != e.data.result[0].Value) {
+                        if (options.codeRepetition || lastCode != e.data.result[0].Value) {
                             beep();
                             lastCode = e.data.result[0].Value;
-                            Self.options.resultFunction({
+                            options.resultFunction({
                                 format: e.data.result[0].Format,
                                 code: e.data.result[0].Value,
                                 imgData: lastImageSrc
@@ -242,7 +237,7 @@
                 }
                 if ((!sucessLocalDecode || !localImage) && e.data.success != 'localization') {
                     if (!localImage) {
-                        setTimeout(tryParseBarCode, 1E3 / Self.options.decodeBarCodeRate);
+                        setTimeout(tryParseBarCode, 1E3 / options.decodeBarCodeRate);
                     }
                 }
             }
@@ -253,10 +248,10 @@
                 delayBool = true;
                 delay();
                 setTimeout(function() {
-                    if (Self.options.codeRepetition || lastCode != a) {
+                    if (options.codeRepetition || lastCode != a) {
                         beep();
                         lastCode = a;
-                        Self.options.resultFunction({
+                        options.resultFunction({
                             format: 'QR Code',
                             code: a,
                             imgData: lastImageSrc
@@ -268,10 +263,8 @@
     }
 
     function tryParseBarCode() {
-        $(display).css({
-            'transform': 'scale(' + (Self.options.flipHorizontal ? '-1' : '1') + ', ' + (Self.options.flipVertical ? '-1' : '1') + ')'
-        });
-        if (Self.options.tryVertical && !localImage) {
+        display.style.transform = 'scale(' + (options.flipHorizontal ? '-1' : '1') + ', ' + (options.flipVertical ? '-1' : '1') + ')';
+        if (options.tryVertical && !localImage) {
             flipMode.push(flipMode[0]);
             flipMode.splice(0, 1);
         } else {
@@ -289,15 +282,13 @@
     }
 
     function tryParseQRCode() {
-        $(display).css({
-            'transform': 'scale(' + (Self.options.flipHorizontal ? '-1' : '1') + ', ' + (Self.options.flipVertical ? '-1' : '1') + ')'
-        });
+        display.style.transform = 'scale(' + (options.flipHorizontal ? '-1' : '1') + ', ' + (options.flipVertical ? '-1' : '1') + ')';
         try {
             lastImageSrc = display.toDataURL();
             qrcode.decode();
         } catch (e) {
             if (!localImage && !delayBool) {
-                setTimeout(tryParseQRCode, 1E3 / Self.options.decodeQRCodeRate);
+                setTimeout(tryParseQRCode, 1E3 / options.decodeQRCodeRate);
             }
         }
     }
@@ -322,7 +313,7 @@
     }
 
     function brightness(pixels, adjustment) {
-        adjustment = adjustment === 0 && Self.options.autoBrightnessValue ? Self.options.autoBrightnessValue - getImageLightness() : adjustment;
+        adjustment = adjustment === 0 && options.autoBrightnessValue ? Number(options.autoBrightnessValue) - getImageLightness() : adjustment;
         var d = pixels.data;
         for (var i = 0; i < d.length; i += 4) {
             d[i] += adjustment;
@@ -415,8 +406,8 @@
     }
 
     function buildSelectMenu(selectorVideo, ind) {
-        videoSelect = $(selectorVideo);
-        videoSelect.html('');
+        videoSelect = Q(selectorVideo);
+        videoSelect.innerHTML = '';
         try {
             if (mediaDevices && mediaDevices.enumerateDevices) {
                 mediaDevices.enumerateDevices().then(function(devices) {
@@ -424,40 +415,40 @@
                         gotSources(device);
                     });
                     if (typeof ind === 'string') {
-                        Array.prototype.find.call(videoSelect.get(0).children, function(a, i) {
-                            if ($(a).text().toLowerCase().match(new RegExp(ind, 'g'))) {
-                                videoSelect.prop('selectedIndex', i);
+                        Array.prototype.find.call(videoSelect.children, function(a, i) {
+                            if (a['innerText' in HTMLElement.prototype ? 'innerText' : 'textContent'].toLowerCase().match(new RegExp(ind, 'g'))) {
+                                videoSelect.selectedIndex = i;
                             }
                         });
                     } else {
-                        videoSelect.prop('selectedIndex', videoSelect.children().length <= ind ? 0 : ind);
+                        videoSelect.selectedIndex = videoSelect.children.length <= ind ? 0 : ind;
                     }
                 }).catch(function(error) {
-                    Self.options.getDevicesError(error);
+                    options.getDevicesError(error);
                 });
             } else if (mediaDevices && !mediaDevices.enumerateDevices) {
-                $('<option value="true">On</option>').appendTo(videoSelect);
-                Self.options.getDevicesError(new NotSupportError('enumerateDevices Or getSources is Not supported'));
+                html('<option value="true">On</option>', videoSelect);
+                options.getDevicesError(new NotSupportError('enumerateDevices Or getSources is Not supported'));
             } else {
                 throw new NotSupportError('getUserMedia is Not supported');
             }
         } catch (error) {
-            Self.options.getDevicesError(error);
+            options.getDevicesError(error);
         }
     }
 
     function gotSources(device) {
         if (device.kind === 'video' || device.kind === 'videoinput') {
             var face = (!device.facing || device.facing === '') ? 'unknown' : device.facing;
-            var text = device.label || 'Camera '.concat(videoSelect.children().length + 1, ' (facing: ' + face + ')');
-            $('<option value="' + (device.id || device.deviceId) + '">' + text + '</option>').appendTo(videoSelect);
+            var text = device.label || 'camera ' + (videoSelect.length + 1) + ' (facing: ' + face + ')';
+            html('<option value="' + (device.id || device.deviceId) + '">' + text + '</option>', videoSelect);
         }
     }
 
     function changeConstraints() {
-        var constraints = $.parseJSON(JSON.stringify(Self.options.constraints));
-        if (videoSelect && videoSelect.children().length !== 0) {
-            switch (videoSelect.val().toString()) {
+        var constraints = JSON.parse(JSON.stringify(options.constraints));
+        if (videoSelect && videoSelect.length !== 0) {
+            switch (videoSelect[videoSelect.selectedIndex].value.toString()) {
                 case 'true':
                     if (navigator.userAgent.search("Edge") == -1 && navigator.userAgent.search("Chrome") != -1) {
                         constraints.video.optional = [{
@@ -473,20 +464,28 @@
                 default:
                     if (navigator.userAgent.search("Edge") == -1 && navigator.userAgent.search("Chrome") != -1) {
                         constraints.video.optional = [{
-                            sourceId: videoSelect.val()
+                            sourceId: videoSelect[videoSelect.selectedIndex].value
                         }];
                     } else if (navigator.userAgent.search("Firefox") != -1) {
                         constraints.video.deviceId = {
-                            exact: videoSelect.val()
+                            exact: videoSelect[videoSelect.selectedIndex].value
                         };
                     } else {
-                         constraints.video.deviceId = videoSelect.val();
+                         constraints.video.deviceId = videoSelect[videoSelect.selectedIndex].value;
                     }
                     break;
             }
         }
         constraints.audio = false;
         return constraints;
+    }
+
+    function Q(el) {
+        if (typeof el === 'string') {
+            var els = document.querySelectorAll(el);
+            return typeof els === 'undefined' ? undefined : els.length > 1 ? els : els[0];
+        }
+        return el;
     }
 
     function decodeLocalImage(url) {
@@ -516,13 +515,45 @@
     }
 
     function download(filename, url) {
-        var a = $('<a>');
-        a.attr('href', url);
-        a.attr('download', filename);
-        a.css('display', 'none');
-        a.appendTo('body');
+        var a = window.document.createElement('a'),
+            bd = document.querySelector('body');
+        bd.appendChild(a);
+        a.setAttribute('href', url);
+        a.setAttribute('download', filename);
         a.click();
-        a.remove();
+        bd.removeChild(a);
+    }
+
+    function mergeRecursive(target, source) {
+        if (typeof target !== 'object') {
+            target = {};
+        }
+        for (var property in source) {
+            if (source.hasOwnProperty(property)) {
+                var sourceProperty = source[property];
+                if (typeof sourceProperty === 'object') {
+                    target[property] = mergeRecursive(target[property], sourceProperty);
+                    continue;
+                }
+                target[property] = sourceProperty;
+            }
+        }
+        for (var a = 2, l = arguments.length; a < l; a++) {
+            mergeRecursive(target, arguments[a]);
+        }
+        return target;
+    }
+
+    function html(innerhtml, appendTo) {
+        var item = document.createElement('div');
+        if (innerhtml) {
+            item.innerHTML = innerhtml;
+        }
+        if (appendTo) {
+            appendTo.appendChild(item.children[0]);
+            return item;
+        }
+        return item.children[0];
     }
 
     function NotSupportError(message) {
@@ -530,32 +561,35 @@
         this.message = (message || '');
     }
     NotSupportError.prototype = Error.prototype;
-    $.extend(Plugin.prototype, {
-        init: function() {
-            if (!initialized) {
-                if (!display || display.tagName.toLowerCase() !== 'canvas') {
-                    console.log('Element type must be canvas!');
-                    alert('Element type must be canvas!');
-                    return false;
+    return {
+        init: function(opt) {
+            if (initialized) {
+                return this;
+            }
+            if (!display || display.tagName.toLowerCase() !== 'canvas') {
+                console.log('Element type must be canvas!');
+                alert('Element type must be canvas!');
+                return false;
+            }
+            con = display.getContext('2d');
+            if (opt) {
+                options = mergeRecursive(options, opt);
+                if (options.beep) {
+                    beepSound = new Audio(options.beep);
                 }
-                con = display.getContext('2d');
-                display.width = w = Self.options.width;
-                display.height = h = Self.options.height;
-                qrcode.sourceCanvas = display;
-                initialized = true;
-                setEventListeners();
-                DecodeWorker = new Worker(this.options.decoderWorker);
-                if (this.options.beep) {
-                    beepSound = new Audio(this.options.beep);
-                }
-                if (this.options.decodeQRCodeRate || this.options.decodeBarCodeRate) {
-                    setCallBack();
-                }
+            }
+            display.width = w = options.width;
+            display.height = h = options.height;
+            qrcode.sourceCanvas = display;
+            initialized = true;
+            setEventListeners();
+            DecodeWorker = new Worker(options.decoderWorker);
+            if (options.decodeQRCodeRate || options.decodeBarCodeRate) {
+                setCallBack();
             }
             return this;
         },
         play: function() {
-            this.init();
             localImage = false;
             setTimeout(play, 100);
             return this;
@@ -583,13 +617,10 @@
         },
         isInitialized: function() {
             return initialized;
-        }
-    });
-    $.fn[pluginName] = function(options) {
-        return this.each(function() {
-            if (!$.data(this, 'plugin_' + pluginName)) {
-                $.data(this, 'plugin_' + pluginName, new Plugin(this, options));
-            }
-        });
+        },
+        getWorker: function () {
+            return DecodeWorker;
+        },
+        options: options
     };
-})(jQuery, window, document);
+};
