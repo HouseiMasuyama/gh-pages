@@ -38,12 +38,6 @@ var WebCodeCamJS = function(element) {
         delayBool = false,
         initialized = false,
         localStream = null,
-        scanSize = {
-            x: 80,
-            y: 60,
-            width: 320,
-            height: 240,
-        },
         options = {
             decodeQRCodeRate: 5,
             decodeBarCodeRate: 3,
@@ -51,8 +45,8 @@ var WebCodeCamJS = function(element) {
             codeRepetition: true,
             tryVertical: true,
             frameRate: 15,
-            width: 640,
-            height: 480,
+            width: 320,
+            height: 240,
             constraints: {
                 video: {
                     mandatory: {
@@ -155,9 +149,9 @@ var WebCodeCamJS = function(element) {
                 if (options.decodeBarCodeRate) {
                     tryParseBarCode();
                 }
-                // if (options.decodeQRCodeRate) {
-                //     tryParseQRCode();
-                // }
+                if (options.decodeQRCodeRate) {
+                    tryParseQRCode();
+                }
             }, options.successTimeout);
         }
     }
@@ -200,7 +194,7 @@ var WebCodeCamJS = function(element) {
                         z = optimalZoom();
                     }
                     con.drawImage(video, (w * z - w) / -2, (h * z - h) / -2, w * z, h * z);
-                    var imageData = con.getImageData(scanSize.x, scanSize.y, scanSize.width, scanSize.height);
+                    var imageData = con.getImageData(0, 0, w, h);
                     if (options.grayScale) {
                         imageData = grayScale(imageData);
                     }
@@ -216,7 +210,6 @@ var WebCodeCamJS = function(element) {
                     if (options.sharpness.length !== 0) {
                         imageData = convolute(imageData, options.sharpness);
                     }
-                    imageData = drawRectangleAndMerge(con.getImageData(0, 0, w, h), imageData, scanSize.x, scanSize.y, scanSize.width, scanSize.height);
                     con.putImageData(imageData, 0, 0);
                 }
             }, 1E3 / options.frameRate);
@@ -234,7 +227,6 @@ var WebCodeCamJS = function(element) {
                         if (options.codeRepetition || lastCode != e.data.result[0].Value) {
                             beep();
                             lastCode = e.data.result[0].Value;
-                            // if (!checkDigit(lastCode, e.data.result[0].Format)) return;
                             options.resultFunction({
                                 format: e.data.result[0].Format,
                                 code: e.data.result[0].Value,
@@ -280,13 +272,9 @@ var WebCodeCamJS = function(element) {
         }
         lastImageSrc = display.toDataURL();
         DecodeWorker.postMessage({
-            scan: con.getImageData(
-                scanSize.x,
-                scanSize.y,
-                scanSize.width,
-                scanSize.height).data,
-            scanWidth: scanSize.width,
-            scanHeight: scanSize.height,
+            scan: con.getImageData(0, 0, w, h).data,
+            scanWidth: w,
+            scanHeight: h,
             multiple: false,
             decodeFormats: ["Code128", "Code93", "Code39", "EAN-13", "2Of5", "Inter2Of5", "Codabar"],
             rotation: flipMode[0]
@@ -412,51 +400,6 @@ var WebCodeCamJS = function(element) {
                 dst[dstOff + 1] = g;
                 dst[dstOff + 2] = b;
                 dst[dstOff + 3] = a + alphaFac * (255 - a);
-            }
-        }
-        return output;
-    }
-
-    function drawRectangleAndMerge(screenPixels, pixels, x, y, w, h) {
-        // 内側のピクセル
-        var src = pixels.data,
-            // 全体のピクセル
-            screen = screenPixels.data,
-            // 空のキャンバスを作成し、この中に結果を入れる
-            tmpCanvas = document.createElement('canvas'),
-            tmpCtx = tmpCanvas.getContext('2d'),
-            output = tmpCtx.createImageData(screenPixels.width, screenPixels.height),
-            dst = output.data;
-        for (var tmp_y = 0; tmp_y < screenPixels.height; tmp_y++) {
-            for (var tmp_x = 0; tmp_x < screenPixels.width; tmp_x++) {
-                // 色をぬる座標設定
-                var dstOff = (tmp_y * screenPixels.width + tmp_x) * 4;
-                // 矩形の塗り範囲(この場合3pixel内側に赤く塗る)
-                if (x < tmp_x && x + w > tmp_x && y < tmp_y && y + h > tmp_y// 外周の中であるか
-                ) {
-                    if (x + 3 < tmp_x && x + w - 3 > tmp_x && y + 3 < tmp_y && y + h - 3 > tmp_y)// 内周から3pixel内側か
-                    {
-                        // 枠の内側用の座標生成
-                        var dstSrcOff = ((tmp_y - y) * pixels.width + (tmp_x - x)) * 4;
-                        // 枠の内側の描画
-                        dst[dstOff] = src[dstSrcOff]; // R
-                        dst[dstOff + 1] = src[dstSrcOff + 1]; // G
-                        dst[dstOff + 2] = src[dstSrcOff + 2]; // B
-                        dst[dstOff + 3] = 255; // alpha
-                    } else {
-                        // 色の枠を描画
-                        dst[dstOff] = 255; // R
-                        dst[dstOff + 1] = 0; // G
-                        dst[dstOff + 2] = 0; // B
-                        dst[dstOff + 3] = 255; // alpha
-                    }
-                } else {
-                    // 枠の外を描画
-                    dst[dstOff] = screen[dstOff]; // R
-                    dst[dstOff + 1] = screen[dstOff + 1]; // G
-                    dst[dstOff + 2] = screen[dstOff + 2]; // B
-                    dst[dstOff + 3] = 255; // alpha
-                }
             }
         }
         return output;
@@ -617,27 +560,6 @@ var WebCodeCamJS = function(element) {
         this.name = 'NotSupportError';
         this.message = (message || '');
     }
-    
-    function checkDigit(barcodeStr, barCodeType) {
-        // バーコードの種類ごとに処理を変える
-        if (barCodeType === "EAN-13") {
-            // 短縮用処理
-            barcodeStr = ('00000' + barcodeStr).slice(-13);
-            let evenNum = 0, oddNum = 0;
-            for (var i = 0; i < barcodeStr.length - 1; i++) {
-                if (i % 2 === 0) { // 「奇数」かどうか（0から始まるため、iの偶数と奇数が逆）
-                    oddNum += parseInt(barcodeStr[i]);
-                } else {
-                    evenNum += parseInt(barcodeStr[i]);
-                }
-            }
-            // 結果
-            return 10 - parseInt((evenNum * 3 + oddNum).toString().slice(-1)) === parseInt(barcodeStr.slice(-1));
-        }
-        // 対象とならないバーコードの場合はtrue（確認せずに処理通過）で終了
-        return true;
-    }
-
     NotSupportError.prototype = Error.prototype;
     return {
         init: function(opt) {
